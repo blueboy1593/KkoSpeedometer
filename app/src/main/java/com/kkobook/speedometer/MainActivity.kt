@@ -3,13 +3,18 @@ package com.kkobook.speedometer
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorStateListDrawable
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
+import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import com.github.anastr.speedviewlib.PointerSpeedometer
 import com.google.android.gms.location.*
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
@@ -21,7 +26,9 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks, E
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
-    lateinit var currentSpeed: TextView
+    lateinit var pointerSpeedometer: PointerSpeedometer
+    lateinit var screenButton: TextView
+    private var preventScreenOff: Boolean = false
 
     private var isDone : Boolean by Delegates.observable(false) { property, oldValue, newValue ->
         if (newValue) {
@@ -32,7 +39,24 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks, E
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        currentSpeed = findViewById(R.id.currentSpeed)
+        pointerSpeedometer = findViewById(R.id.pointerSpeedometer)
+        pointerSpeedometer.unitTextSize = 16F
+        pointerSpeedometer.setSpeedometerColor(Color.BLUE)
+        pointerSpeedometer.setPointerColor(Color.BLUE)
+        pointerSpeedometer.centerCircleColor = Color.BLUE
+
+        screenButton = findViewById(R.id.screenButton)
+        screenButton.setOnClickListener {
+            if (preventScreenOff) {
+                preventScreenOff = false
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                screenButton.text = "화면 꺼짐 방지"
+            } else {
+                preventScreenOff = true
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                screenButton.text = "화면 꺼짐 방지 해제"
+            }
+        }
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         askForLocationPermission()
@@ -41,11 +65,12 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks, E
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 if (!isDone) {
-                    val speedToInt = locationResult.lastLocation.speed.toInt()
-                    currentSpeed.text = speedToInt.toString()
+                    val speedToFloat = locationResult.lastLocation.speed
+                    pointerSpeedometer.speedTo(speedToFloat)
                 }
             }
         }
+
 
     }
 
